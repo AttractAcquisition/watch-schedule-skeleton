@@ -1,19 +1,19 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export function QuickActions() {
   const navigate = useNavigate();
   const actions: Array<{ label: string; onClick: () => void }> = [
-    { label: "Generate Schedule", onClick: () => navigate({ to: "/watch-builder" }) },
+    { label: "Generate Schedule", onClick: () => navigate("/watch-builder") },
     {
       label: "Regenerate Affected Watches",
       onClick: () => toast("Regenerate placeholder — schedule engine not yet connected."),
     },
-    { label: "Pause for Charter", onClick: () => navigate({ to: "/charter-mode" }) },
-    { label: "Add Leave", onClick: () => navigate({ to: "/leave" }) },
-    { label: "Export PDF", onClick: () => navigate({ to: "/reports" }) },
-    { label: "Edit Crew", onClick: () => navigate({ to: "/crew" }) },
+    { label: "Pause for Charter", onClick: () => navigate("/charter-mode") },
+    { label: "Add Leave", onClick: () => navigate("/leave") },
+    { label: "Export PDF", onClick: () => navigate("/reports") },
+    { label: "Edit Crew", onClick: () => navigate("/crew") },
   ];
   return (
     <div className="panel p-5">

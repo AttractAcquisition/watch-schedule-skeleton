@@ -1,8 +1,8 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useLocation } from "react-router-dom";
 import { NAV_ITEMS } from "@/lib/constants";
 
 export function MobileNav({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { pathname } = useLocation();
   return (
     <div className="grid grid-cols-2 gap-1 p-3">
       {NAV_ITEMS.map((item) => {

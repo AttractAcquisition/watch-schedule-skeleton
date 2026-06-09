@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { Download, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +68,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
           onClick={() => {
             // TODO: call schedule generation Edge Function
             toast("Regenerate placeholder — schedule engine not yet connected.");
-            navigate({ to: "/watch-builder" });
+            navigate("/watch-builder");
           }}
         >
           <RefreshCcw className="h-3.5 w-3.5" /> Regenerate Schedule
@@ -79,7 +79,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
           onClick={() => {
             // TODO: call PDF export Edge Function
             toast("PDF export placeholder — backend connection required.");
-            navigate({ to: "/reports" });
+            navigate("/reports");
           }}
         >
           <Download className="h-3.5 w-3.5" /> Export PDF

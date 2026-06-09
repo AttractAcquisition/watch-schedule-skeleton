@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "@tanstack/react-router";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,7 @@ export function SignupForm() {
         e.preventDefault();
         if (password !== confirm) return;
         await signUpWithEmail(email, password, plan); // TODO: Supabase signUp
-        navigate({ to: "/payment-required" });
+        navigate("/payment-required");
       }}
     >
       <div className="space-y-2">

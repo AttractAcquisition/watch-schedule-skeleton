@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getAuthState, subscribeAuth } from "@/lib/authPlaceholder";
 
 /**
@@ -9,25 +9,25 @@ import { getAuthState, subscribeAuth } from "@/lib/authPlaceholder";
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState(getAuthState());
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { pathname } = useLocation();
 
   useEffect(() => subscribeAuth(setAuth), []);
 
   useEffect(() => {
     if (!auth.isAuthenticated) {
-      navigate({ to: "/login" });
+      navigate("/login", { replace: true });
       return;
     }
     if (auth.subscriptionStatus !== "active") {
-      navigate({ to: "/payment-required" });
+      navigate("/payment-required", { replace: true });
       return;
     }
     if (!auth.hasCompletedOnboarding && pathname !== "/onboarding") {
-      navigate({ to: "/onboarding" });
+      navigate("/onboarding", { replace: true });
       return;
     }
     if (auth.hasCompletedOnboarding && pathname === "/onboarding") {
-      navigate({ to: "/dashboard" });
+      navigate("/dashboard", { replace: true });
     }
   }, [auth, pathname, navigate]);
 

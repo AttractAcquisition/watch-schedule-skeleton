@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Anchor, Compass } from "lucide-react";
 import { BRAND, NAV_ITEMS } from "@/lib/constants";
 import { getAuthState, subscribeAuth, signOut } from "@/lib/authPlaceholder";
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { pathname } = useLocation();
   const navigate = useNavigate();
   const [auth, setAuth] = useState(getAuthState());
   useEffect(() => subscribeAuth(setAuth), []);
@@ -56,7 +56,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           className="w-full rounded-md border border-border px-2 py-1.5 text-left text-[11px] uppercase tracking-wider text-muted-foreground hover:bg-secondary"
           onClick={async () => {
             await signOut();
-            navigate({ to: "/login" });
+            navigate("/login");
           }}
         >
           Sign out

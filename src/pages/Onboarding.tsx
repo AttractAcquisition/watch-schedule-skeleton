@@ -8,7 +8,7 @@ import { WatchModeStep } from "@/components/onboarding/WatchModeStep";
 import { RuleBuilder } from "@/components/schedule/RuleBuilder";
 import { ReviewSetupStep } from "@/components/onboarding/ReviewSetupStep";
 import { completeOnboarding } from "@/lib/authPlaceholder";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { BRAND } from "@/lib/constants";
 import { DevMockStatePanel } from "@/components/DevMockStatePanel";
 
@@ -63,7 +63,7 @@ export default function Onboarding() {
             <Button
               onClick={async () => {
                 await completeOnboarding(); // TODO: persist in Supabase
-                navigate({ to: "/dashboard" });
+                navigate("/dashboard");
               }}
             >
               Create Vessel Dashboard

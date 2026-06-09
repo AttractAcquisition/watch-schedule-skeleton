@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 import { setMockState } from "@/lib/authPlaceholder";
 
@@ -19,7 +19,7 @@ export default function PaymentSuccess() {
           className="mt-6 w-full"
           onClick={() => {
             setMockState("logged_in_paid_new");
-            navigate({ to: "/onboarding" });
+            navigate("/onboarding");
           }}
         >
           Set up vessel

@@ -3,7 +3,7 @@ import { BRAND, PLANS } from "@/lib/constants";
 import { mockCreateCheckoutSession } from "@/lib/stripePlaceholder";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
   Dialog,
@@ -85,9 +85,7 @@ export default function PaymentRequired() {
               Stripe Checkout placeholder completed. Backend connection required before production.
             </DialogDescription>
           </DialogHeader>
-          <Button onClick={() => navigate({ to: "/payment-success" })}>
-            Continue to /payment-success
-          </Button>
+          <Button onClick={() => navigate("/payment-success")}>Continue to /payment-success</Button>
         </DialogContent>
       </Dialog>
     </div>
