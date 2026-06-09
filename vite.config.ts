@@ -7,6 +7,9 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  // Enable Nitro only for deploy builds. Local/self-hosted Vite builds keep the
+  // existing dist/client + dist/server output.
+  nitro: process.env.NITRO_PRESET ? true : undefined,
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
