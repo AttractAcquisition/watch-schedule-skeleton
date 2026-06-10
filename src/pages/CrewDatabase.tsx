@@ -3,7 +3,6 @@ import { AppShell, PageHeader } from "@/components/layout/AppShell";
 import { CrewTable } from "@/components/crew/CrewTable";
 import { CrewMemberDrawer } from "@/components/crew/CrewMemberDrawer";
 import { Button } from "@/components/ui/button";
-import { MOCK_CREW } from "@/lib/mockData";
 import type { CrewMember, CrewStatus, Department } from "@/lib/types";
 import {
   Select,
@@ -13,14 +12,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useCrew, useVesselId, useInvalidateVesselData } from "@/hooks/data";
+import { mapCrew, updateCrew } from "@/lib/api";
 
 export default function CrewDatabase() {
-  const [crew, setCrew] = useState(MOCK_CREW);
+  const vesselId = useVesselId();
+  const crewQuery = useCrew();
+  const invalidate = useInvalidateVesselData();
+
   const [dept, setDept] = useState<Department | "all">("all");
   const [status, setStatus] = useState<CrewStatus | "all">("all");
   const [editing, setEditing] = useState<CrewMember | null>(null);
   const [open, setOpen] = useState(false);
 
+  const crew: CrewMember[] = (crewQuery.data ?? []).map(mapCrew);
   const filtered = crew.filter(
     (c) => (dept === "all" || c.department === dept) && (status === "all" || c.status === status),
   );
@@ -33,29 +38,28 @@ export default function CrewDatabase() {
         description="Manage crew departments, watch eligibility, and availability for rota generation."
         actions={
           <>
-            <Button size="sm" onClick={() => toast("Add crew member placeholder.")}>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditing(null);
+                setOpen(true);
+              }}
+            >
               Add crew member
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => toast("Import crew list placeholder.")}
+              onClick={() => toast("Crew list import (OCR) is a future feature.")}
             >
               Import crew list
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => toast("Export crew list placeholder.")}
+              onClick={() => toast("Crew list export is a future feature.")}
             >
               Export crew list
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast("No unassigned crew in mock data.")}
-            >
-              Review unassigned crew
             </Button>
           </>
         }
@@ -91,21 +95,36 @@ export default function CrewDatabase() {
         </Select>
       </div>
 
-      <CrewTable
-        crew={filtered}
-        onEdit={(c) => {
-          setEditing(c);
-          setOpen(true);
-        }}
-        onToggleEligible={(c, v) => {
-          setCrew((cur) => cur.map((x) => (x.id === c.id ? { ...x, watchEligible: v } : x)));
-        }}
-      />
+      {crewQuery.isLoading ? (
+        <div className="panel p-6 text-sm text-muted-foreground">Loading crew…</div>
+      ) : (
+        <CrewTable
+          crew={filtered}
+          onEdit={(c) => {
+            setEditing(c);
+            setOpen(true);
+          }}
+          onToggleEligible={async (c, v) => {
+            try {
+              await updateCrew(c.id, { watch_eligible: v });
+              invalidate();
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Update failed.");
+            }
+          }}
+        />
+      )}
 
-      <CrewMemberDrawer open={open} member={editing} onOpenChange={setOpen} />
-      {filtered.length === 0 && (
+      <CrewMemberDrawer
+        open={open}
+        member={editing}
+        vesselId={vesselId}
+        onOpenChange={setOpen}
+        onSaved={invalidate}
+      />
+      {!crewQuery.isLoading && filtered.length === 0 && (
         <div className="mt-4 panel p-4 text-xs text-muted-foreground">
-          No crew match these filters. Import a crew list, add a crew member, or clear filters.
+          No crew match these filters. Add a crew member or clear filters.
         </div>
       )}
     </AppShell>

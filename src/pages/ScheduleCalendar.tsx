@@ -10,11 +10,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
-import { MOCK_CHARTER } from "@/lib/mockData";
+import { useNavigate } from "react-router-dom";
+import { useCharterPauses, useLatestScheduleRun } from "@/hooks/data";
 
 export default function ScheduleCalendar() {
   const [dept, setDept] = useState("all");
+  const navigate = useNavigate();
+  const charter = useCharterPauses();
+  const latestRun = useLatestScheduleRun();
+
+  const activeCharter = (charter.data ?? []).find((c) => c.status === "active");
 
   return (
     <AppShell>
@@ -24,24 +29,16 @@ export default function ScheduleCalendar() {
         description="View the confirmed rota across days, weeks, departments, and charter pauses."
         actions={
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast("Regenerate schedule placeholder.")}
-            >
+            <Button variant="outline" size="sm" onClick={() => navigate("/watch-builder")}>
               Regenerate schedule
             </Button>
-            <Button size="sm" onClick={() => toast("PDF export placeholder.")}>
+            <Button size="sm" onClick={() => navigate("/reports")}>
               Export PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={() => toast("Add leave placeholder.")}>
+            <Button variant="outline" size="sm" onClick={() => navigate("/leave")}>
               Add leave
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast("Pause for charter placeholder.")}
-            >
+            <Button variant="outline" size="sm" onClick={() => navigate("/charter-mode")}>
               Pause for charter
             </Button>
           </>
@@ -71,16 +68,22 @@ export default function ScheduleCalendar() {
         </Select>
       </div>
 
+      {/* The grid is illustrative; wire it to schedule_assignments for the
+          latest run to render live watches. */}
       <ScheduleGrid filterDept={dept} />
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div className="panel p-4 text-xs text-muted-foreground">
-          <span className="text-foreground">Charter overlay</span> · paused from{" "}
-          {MOCK_CHARTER.startDate} to {MOCK_CHARTER.endDate}.
+          <span className="text-foreground">Charter overlay</span> ·{" "}
+          {activeCharter
+            ? `paused from ${activeCharter.start_date} to ${activeCharter.end_date}.`
+            : "no active charter pause."}
         </div>
         <div className="panel p-4 text-xs text-muted-foreground">
-          <span className="text-foreground">Leave markers</span> · Lisa Green (on leave), Luca
-          Bianchi (training). Draft and Confirmed badges are shown in the grid.
+          <span className="text-foreground">Latest schedule</span> ·{" "}
+          {latestRun.data
+            ? `${latestRun.data.status} · ${latestRun.data.start_date} → ${latestRun.data.end_date}`
+            : "none generated yet."}
         </div>
       </div>
     </AppShell>

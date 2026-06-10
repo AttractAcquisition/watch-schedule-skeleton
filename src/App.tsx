@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import type { ReactNode } from "react";
 
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
-import { getAuthState } from "@/lib/authPlaceholder";
+import { useAuth } from "@/lib/auth";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import PaymentRequired from "@/pages/PaymentRequired";
@@ -22,19 +22,16 @@ import NotFound from "@/pages/NotFound";
 
 function IndexRedirect() {
   const navigate = useNavigate();
+  const { isLoading, isAuthenticated, isPaid, hasCompletedOnboarding } = useAuth();
 
   useEffect(() => {
-    const state = getAuthState();
+    if (isLoading) return;
 
-    if (!state.isAuthenticated) navigate("/login", { replace: true });
-    else if (state.subscriptionStatus !== "active") {
-      navigate("/payment-required", { replace: true });
-    } else if (!state.hasCompletedOnboarding) {
-      navigate("/onboarding", { replace: true });
-    } else {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [navigate]);
+    if (!isAuthenticated) navigate("/login", { replace: true });
+    else if (!isPaid) navigate("/payment-required", { replace: true });
+    else if (!hasCompletedOnboarding) navigate("/onboarding", { replace: true });
+    else navigate("/dashboard", { replace: true });
+  }, [navigate, isLoading, isAuthenticated, isPaid, hasCompletedOnboarding]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">

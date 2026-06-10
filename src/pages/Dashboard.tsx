@@ -5,30 +5,57 @@ import { FairnessScoreCard } from "@/components/dashboard/FairnessScoreCard";
 import { CharterStatusCard } from "@/components/dashboard/CharterStatusCard";
 import { SchedulePreview } from "@/components/dashboard/SchedulePreview";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { MOCK_CREW, MOCK_SCHEDULE, MOCK_FAIRNESS, MOCK_LEAVE } from "@/lib/mockData";
 import { Badge } from "@/components/ui/badge";
 import { Anchor, Users, CalendarX, FileDown, Activity, ShieldAlert } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { useCrew, useLatestScheduleRun, useLeave, useCharterPauses } from "@/hooks/data";
+import { PLAN_LABEL } from "@/lib/constants";
+import type { PlanType } from "@/lib/types";
+
+const WATCH_MODE_HINT: Record<string, string> = {
+  solo: "Single watchkeeper",
+  dual: "Watchkeeper · OOW",
+  triple: "Deck/OOW · Interior · Engineering",
+};
 
 export default function Dashboard() {
-  const active = MOCK_CREW.filter((c) => c.status === "active").length;
-  const leaveConflicts = MOCK_LEAVE.length;
+  const { subscription, vessel } = useAuth();
+  const crew = useCrew();
+  const latestRun = useLatestScheduleRun();
+  const leave = useLeave();
+  const charter = useCharterPauses();
+
+  const crewList = crew.data ?? [];
+  const activeCrew = crewList.filter((c) => c.status === "active").length;
+  const planType = (subscription?.plan_type ?? vessel?.plan_type) as PlanType | null | undefined;
+  const watchMode = vessel?.watch_mode ?? "solo";
+
+  const fairness = latestRun.data?.fairness_score;
+  const activeCharter = (charter.data ?? []).find((c) => c.status === "active");
+  const leaveConflicts = (leave.data ?? []).filter((l) => l.status !== "available").length;
+
   return (
     <AppShell>
       <PageHeader
         eyebrow="Vessel Dashboard"
-        title="M/Y Meridian Watch Dashboard"
+        title={`${vessel?.name ?? "Your vessel"} Watch Dashboard`}
         description="Generate, review, pause, and export fair yacht watch schedules."
         actions={
           <>
             <Badge variant="outline" className="border-border text-[10px] uppercase tracking-wider">
-              Triple Watch
+              {planType ? PLAN_LABEL[planType] : "No plan"}
             </Badge>
             <Badge variant="outline" className="border-border text-[10px] uppercase tracking-wider">
-              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-success" />{" "}
-              Subscription Active
+              <span
+                className={
+                  "mr-1.5 inline-block h-1.5 w-1.5 rounded-full " +
+                  (subscription?.status === "active" ? "bg-success" : "bg-muted-foreground")
+                }
+              />{" "}
+              Subscription {subscription?.status ?? "inactive"}
             </Badge>
             <Badge variant="outline" className="border-border text-[10px] uppercase tracking-wider">
-              Charter · Scheduled
+              Charter · {activeCharter ? "Paused" : "Inactive"}
             </Badge>
           </>
         }
@@ -37,42 +64,48 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <StatCard
           label="Fairness Score"
-          value={`${MOCK_FAIRNESS.overall}%`}
-          hint="{{FAIRNESS_SCORE}}"
+          value={fairness != null ? `${Math.round(fairness)}%` : "—"}
+          hint={latestRun.data ? "Latest draft" : "No schedule yet"}
           icon={<Activity className="h-4 w-4" />}
         />
         <StatCard
           label="Active Crew"
-          value={`${active}/${MOCK_CREW.length}`}
-          hint="{{CREW_COUNT}}"
+          value={crew.isLoading ? "…" : `${activeCrew}/${crewList.length}`}
+          hint="On vessel"
           icon={<Users className="h-4 w-4" />}
         />
         <StatCard
           label="Watch Mode"
-          value="Triple Watch"
-          hint="Deck/OOW · Interior · Engineering"
+          value={`${watchMode[0].toUpperCase()}${watchMode.slice(1)} Watch`}
+          hint={WATCH_MODE_HINT[watchMode]}
           icon={<Anchor className="h-4 w-4" />}
         />
         <StatCard
           label="Charter Status"
-          value="Paused"
-          hint="Resumes Monday"
+          value={activeCharter ? "Paused" : "Inactive"}
+          hint={activeCharter ? `Resumes ${activeCharter.end_date}` : "No active charter"}
           icon={<ShieldAlert className="h-4 w-4" />}
         />
         <StatCard
           label="Leave Conflicts"
-          value="2 affected watches"
-          hint="Lisa Green"
+          value={`${leaveConflicts}`}
+          hint="Open availability records"
           icon={<CalendarX className="h-4 w-4" />}
         />
         <StatCard
-          label="PDF Export"
-          value="Ready"
-          hint={`v${MOCK_SCHEDULE.version} · Bridge edition`}
+          label="Latest Schedule"
+          value={latestRun.data ? latestRun.data.status : "None"}
+          hint={
+            latestRun.data
+              ? `${latestRun.data.start_date} → ${latestRun.data.end_date}`
+              : "Generate one"
+          }
           icon={<FileDown className="h-4 w-4" />}
         />
       </div>
 
+      {/* The preview cards below remain illustrative; wire to live assignment
+          data once a schedule has been generated for this vessel. */}
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
           <SchedulePreview />

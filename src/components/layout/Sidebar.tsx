@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Anchor, Compass } from "lucide-react";
 import { BRAND, NAV_ITEMS } from "@/lib/constants";
-import { getAuthState, subscribeAuth, signOut } from "@/lib/authPlaceholder";
+import { useAuth, initialsFromName } from "@/lib/auth";
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const [auth, setAuth] = useState(getAuthState());
-  useEffect(() => subscribeAuth(setAuth), []);
+  const { user, profile, signOut } = useAuth();
+
+  const fullName = profile?.full_name || user?.email || "Guest";
+  const email = user?.email ?? "";
+  const initials = initialsFromName(profile?.full_name, user?.email);
 
   return (
     <aside className="flex h-full w-60 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
@@ -45,11 +47,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <div className="border-t border-sidebar-border p-3 text-[11px] text-muted-foreground">
         <div className="mb-2 flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-foreground text-[10px] font-semibold text-background">
-            {auth.user?.initials ?? "—"}
+            {initials}
           </div>
-          <div>
-            <div className="text-foreground">{auth.user?.fullName ?? "Guest"}</div>
-            <div>{auth.user?.email ?? ""}</div>
+          <div className="min-w-0">
+            <div className="truncate text-foreground">{fullName}</div>
+            <div className="truncate">{email}</div>
           </div>
         </div>
         <button

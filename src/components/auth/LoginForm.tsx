@@ -3,14 +3,15 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signInWithEmail } from "@/lib/authPlaceholder";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 export function LoginForm() {
-  const [email, setEmail] = useState("captain@meridian.yacht");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { signIn } = useAuth();
 
   return (
     <form
@@ -18,9 +19,15 @@ export function LoginForm() {
       onSubmit={async (e) => {
         e.preventDefault();
         setLoading(true);
-        await signInWithEmail(email, password); // TODO: connect to Supabase
+        const { error } = await signIn(email, password);
         setLoading(false);
-        navigate("/dashboard");
+        if (error) {
+          toast.error(error);
+          return;
+        }
+        // The auth provider + ProtectedRoute route to the correct destination
+        // (payment / onboarding / dashboard) once app state has loaded.
+        navigate("/");
       }}
     >
       <div className="space-y-2">
@@ -40,18 +47,11 @@ export function LoginForm() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
       </div>
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Signing in…" : "Sign in"}
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={() => toast("Magic link placeholder — backend connection required.")}
-      >
-        Send magic link
       </Button>
       <p className="pt-2 text-center text-xs text-muted-foreground">
         Don't have an account?{" "}

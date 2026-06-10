@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { OnboardingStepper } from "@/components/onboarding/OnboardingStepper";
 import { VesselSetupStep } from "@/components/onboarding/VesselSetupStep";
 import { CrewImportStep } from "@/components/onboarding/CrewImportStep";
@@ -7,10 +9,13 @@ import { DepartmentReviewStep } from "@/components/onboarding/DepartmentReviewSt
 import { WatchModeStep } from "@/components/onboarding/WatchModeStep";
 import { RuleBuilder } from "@/components/schedule/RuleBuilder";
 import { ReviewSetupStep } from "@/components/onboarding/ReviewSetupStep";
-import { completeOnboarding } from "@/lib/authPlaceholder";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { BRAND } from "@/lib/constants";
-import { DevMockStatePanel } from "@/components/DevMockStatePanel";
+import { useAuth } from "@/lib/auth";
+import { completeOnboarding, type OnboardingPayload } from "@/lib/api";
+import { MOCK_CREW } from "@/lib/mockData";
+import type { PlanType, WatchMode } from "@/lib/types";
 
 const STEPS = [
   "Set up your vessel",
@@ -21,9 +26,63 @@ const STEPS = [
   "Review vessel setup",
 ];
 
+const PLAN_TO_MODE: Record<PlanType, WatchMode> = {
+  solo_watch: "solo",
+  dual_watch: "dual",
+  triple_watch: "triple",
+};
+
 export default function Onboarding() {
   const [step, setStep] = useState(0);
+  const [vesselName, setVesselName] = useState("");
+  const [timezone, setTimezone] = useState("UTC");
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+  const { user, subscription, refreshAppState } = useAuth();
+
+  const plan = (subscription?.plan_type ?? "solo_watch") as PlanType;
+  const watchMode = PLAN_TO_MODE[plan];
+
+  async function handleComplete() {
+    if (!user) return;
+    if (!vesselName.trim()) {
+      toast.error("Enter a vessel name to finish setup.");
+      setStep(0);
+      return;
+    }
+    setSaving(true);
+    try {
+      // The confirmed crew list currently mirrors the imported roster shown in
+      // the wizard (MOCK_CREW). These rows are persisted and can then be edited
+      // in the Crew Database. TODO: collect edits made in the wizard steps.
+      const crew: OnboardingPayload["crew"] = MOCK_CREW.map((c) => ({
+        fullName: c.name,
+        position: c.position,
+        department: c.department,
+        watchEligible: c.watchEligible,
+        eligibleRoles: c.eligibleRoles,
+        status: c.status,
+      }));
+
+      await completeOnboarding({
+        userId: user.id,
+        vessel: {
+          name: vesselName.trim(),
+          timezone,
+          watchMode,
+          planType: plan,
+        },
+        crew,
+      });
+      await refreshAppState();
+      toast.success("Vessel created.");
+      navigate("/dashboard");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create vessel.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background px-4 py-10 md:px-8">
@@ -34,14 +93,41 @@ export default function Onboarding() {
         <h1 className="text-2xl font-semibold tracking-tight">{STEPS[step]}</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Premium setup wizard for vessel profile, crew confirmation, watch structure, and rota
-          rules. Backend persistence is mocked for this demo.
+          rules. Completing setup writes your vessel, crew and a default watch template to Supabase.
         </p>
         <div className="mt-5">
           <OnboardingStepper steps={STEPS} current={step} />
         </div>
 
         <div className="mt-8">
-          {step === 0 && <VesselSetupStep />}
+          {step === 0 && (
+            <div className="space-y-6">
+              <div className="panel grid max-w-xl gap-3 p-5">
+                <div className="space-y-2">
+                  <Label htmlFor="vesselName">Vessel name</Label>
+                  <Input
+                    id="vesselName"
+                    value={vesselName}
+                    onChange={(e) => setVesselName(e.target.value)}
+                    placeholder="M/Y Meridian"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Input
+                    id="timezone"
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    placeholder="Europe/Monaco"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Watch mode <span className="font-medium">{watchMode}</span> is set from your plan.
+                </p>
+              </div>
+              <VesselSetupStep />
+            </div>
+          )}
           {step === 1 && <CrewImportStep />}
           {step === 2 && <DepartmentReviewStep />}
           {step === 3 && <WatchModeStep />}
@@ -60,18 +146,10 @@ export default function Onboarding() {
           {step < STEPS.length - 1 ? (
             <Button onClick={() => setStep((s) => s + 1)}>Continue</Button>
           ) : (
-            <Button
-              onClick={async () => {
-                await completeOnboarding(); // TODO: persist in Supabase
-                navigate("/dashboard");
-              }}
-            >
-              Create Vessel Dashboard
+            <Button onClick={handleComplete} disabled={saving}>
+              {saving ? "Creating…" : "Create Vessel Dashboard"}
             </Button>
           )}
-        </div>
-        <div className="mt-6">
-          <DevMockStatePanel compact />
         </div>
       </div>
     </div>

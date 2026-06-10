@@ -3,27 +3,63 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signUpWithEmail } from "@/lib/authPlaceholder";
+import { useAuth } from "@/lib/auth";
 import type { PlanType } from "@/lib/types";
 import { PLANS } from "@/lib/constants";
+import { toast } from "sonner";
 
 export function SignupForm() {
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [plan, setPlan] = useState<PlanType>("dual_watch");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { signUp } = useAuth();
 
   return (
     <form
       className="space-y-4"
       onSubmit={async (e) => {
         e.preventDefault();
-        if (password !== confirm) return;
-        await signUpWithEmail(email, password, plan); // TODO: Supabase signUp
-        navigate("/payment-required");
+        if (password !== confirm) {
+          toast.error("Passwords do not match.");
+          return;
+        }
+        if (password.length < 6) {
+          toast.error("Password must be at least 6 characters.");
+          return;
+        }
+        setLoading(true);
+        // The new-user database trigger creates the profile + inactive
+        // subscription rows. The intended plan is stored in user metadata.
+        const { error, needsConfirmation } = await signUp(email, password, { fullName, plan });
+        setLoading(false);
+        if (error) {
+          toast.error(error);
+          return;
+        }
+        if (needsConfirmation) {
+          toast.success("Check your email to confirm your account, then sign in.");
+          navigate("/login");
+          return;
+        }
+        // Session is active immediately (email confirmation disabled) — gate
+        // routing takes over from "/".
+        navigate("/");
       }}
     >
+      <div className="space-y-2">
+        <Label htmlFor="fullName">Full name</Label>
+        <Input
+          id="fullName"
+          type="text"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder="Captain James Carter"
+        />
+      </div>
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -76,8 +112,8 @@ export function SignupForm() {
           ))}
         </div>
       </div>
-      <Button type="submit" className="w-full">
-        Create account
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? "Creating account…" : "Create account"}
       </Button>
       <p className="pt-1 text-center text-[11px] text-muted-foreground">
         Payment and vessel setup will follow after account creation.

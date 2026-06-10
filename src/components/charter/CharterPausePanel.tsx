@@ -3,19 +3,68 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { MOCK_CHARTER } from "@/lib/mockData";
-import {
-  pauseScheduleForCharter,
-  resumeScheduleAfterCharter,
-} from "@/lib/scheduleEnginePlaceholder";
 import { toast } from "sonner";
+import { useVesselId, useLatestScheduleRun, useInvalidateVesselData } from "@/hooks/data";
+import { activateCharterMode, resumeCharterMode } from "@/lib/edgeFunctions";
+
+function addDays(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 export function CharterPausePanel() {
-  const [start, setStart] = useState(MOCK_CHARTER.startDate);
-  const [end, setEnd] = useState(MOCK_CHARTER.endDate);
-  const [keepEng, setKeepEng] = useState(MOCK_CHARTER.keepEngineering);
-  const [keepSec, setKeepSec] = useState(MOCK_CHARTER.keepSecurity);
-  const [scope, setScope] = useState<"all" | "selected">(MOCK_CHARTER.scope);
+  const vesselId = useVesselId();
+  const latestRun = useLatestScheduleRun();
+  const invalidate = useInvalidateVesselData();
+
+  const [start, setStart] = useState(addDays(0));
+  const [end, setEnd] = useState(addDays(3));
+  const [keepEng, setKeepEng] = useState(false);
+  const [keepSec, setKeepSec] = useState(false);
+  const [scope, setScope] = useState<"all" | "selected">("all");
+  const [resumeMode, setResumeMode] = useState<"automatic" | "manual">("automatic");
+  const [busy, setBusy] = useState(false);
+
+  async function activate() {
+    if (!vesselId) {
+      toast.error("No vessel — complete onboarding first.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await activateCharterMode({
+        vessel_id: vesselId,
+        schedule_run_id: latestRun.data?.id,
+        start_date: start,
+        end_date: end,
+        pause_all_watches: scope === "all",
+        keep_engineering_watch_active: keepEng,
+        keep_security_watch_active: keepSec,
+        resume_mode: resumeMode,
+      });
+      invalidate();
+      toast.success(res.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Activation failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resume() {
+    if (!vesselId) return;
+    setBusy(true);
+    try {
+      const res = await resumeCharterMode({ vessel_id: vesselId });
+      invalidate();
+      toast.success(res.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Resume failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="panel p-5">
@@ -65,33 +114,18 @@ export function CharterPausePanel() {
         </div>
         <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
           <span>Resume automatically</span>
-          <Switch defaultChecked />
-        </div>
-        <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-          <span>Resume manually</span>
-          <Switch />
+          <Switch
+            checked={resumeMode === "automatic"}
+            onCheckedChange={(v) => setResumeMode(v ? "automatic" : "manual")}
+          />
         </div>
       </div>
       <div className="mt-5 flex gap-2">
-        <Button
-          onClick={async () => {
-            await pauseScheduleForCharter({ start, end, scope, keepEng, keepSec });
-            toast("Charter Mode activated (mock).");
-          }}
-        >
+        <Button onClick={activate} disabled={busy}>
           Activate Charter Mode
         </Button>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            await resumeScheduleAfterCharter({}); // TODO: edge fn
-            toast("Schedule resumed (mock).");
-          }}
-        >
+        <Button variant="outline" onClick={resume} disabled={busy}>
           Resume Schedule
-        </Button>
-        <Button variant="outline" onClick={() => toast("Draft pause saved (mock).")}>
-          Save Draft Pause
         </Button>
       </div>
     </div>

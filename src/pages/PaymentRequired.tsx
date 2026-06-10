@@ -1,22 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { BRAND, PLANS } from "@/lib/constants";
-import { mockCreateCheckoutSession } from "@/lib/stripePlaceholder";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { DevMockStatePanel } from "@/components/DevMockStatePanel";
+import { DevSubscriptionPanel } from "@/components/DevSubscriptionPanel";
+
+// TODO(stripe): wire each plan button to a real Stripe Checkout session created
+// by a server function / edge function, then redirect to the returned session
+// URL. On success, a Stripe webhook (service_role) sets subscriptions.status.
+// Until then, use the Development-only panel below to mark the account as paid.
 
 export default function PaymentRequired() {
-  const navigate = useNavigate();
-  const [successOpen, setSuccessOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background px-4 py-16 md:px-8">
       <div className="mx-auto max-w-5xl">
@@ -28,8 +21,8 @@ export default function PaymentRequired() {
             Choose your Watch Schedule plan
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Select the watch structure your vessel needs. Payment will be handled securely through
-            Stripe.
+            Select the watch structure your vessel needs. Card payment will be handled securely
+            through Stripe (not yet configured).
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
@@ -62,11 +55,11 @@ export default function PaymentRequired() {
               <div className="mt-5 text-[11px] text-muted-foreground">{p.typical}</div>
               <Button
                 className="mt-6"
-                onClick={async () => {
-                  await mockCreateCheckoutSession(p.id); // TODO: real Stripe checkout
-                  toast("Stripe Checkout placeholder. Backend connection required.");
-                  setSuccessOpen(true);
-                }}
+                onClick={() =>
+                  toast(
+                    "Stripe Checkout is not configured yet. Use the Development panel below to test.",
+                  )
+                }
               >
                 {p.cta}
               </Button>
@@ -74,20 +67,9 @@ export default function PaymentRequired() {
           ))}
         </div>
         <div className="mt-6">
-          <DevMockStatePanel compact />
+          <DevSubscriptionPanel compact />
         </div>
       </div>
-      <Dialog open={successOpen} onOpenChange={setSuccessOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Payment successful - continue to onboarding</DialogTitle>
-            <DialogDescription>
-              Stripe Checkout placeholder completed. Backend connection required before production.
-            </DialogDescription>
-          </DialogHeader>
-          <Button onClick={() => navigate("/payment-success")}>Continue to /payment-success</Button>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

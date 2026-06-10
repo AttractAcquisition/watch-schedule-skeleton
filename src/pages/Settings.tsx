@@ -1,41 +1,79 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppShell, PageHeader } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { openStripeCustomerPortal } from "@/lib/stripePlaceholder";
-import { DevMockStatePanel } from "@/components/DevMockStatePanel";
+import { DevSubscriptionPanel } from "@/components/DevSubscriptionPanel";
 import { toast } from "sonner";
-import { MOCK_VESSEL } from "@/lib/mockData";
-import { signOut } from "@/lib/authPlaceholder";
+import { useAuth } from "@/lib/auth";
+import { updateProfile, updateVessel } from "@/lib/api";
+import { PLAN_LABEL } from "@/lib/constants";
+import type { PlanType } from "@/lib/types";
 
 const ROLES = ["Captain/Admin", "Officer", "Department Head", "Crew Member", "Viewer"];
-const BACKEND_CHECKLIST = [
-  "Supabase project connected",
-  "Auth enabled",
-  "Profiles table created",
-  "Vessels table created",
-  "Crew table created",
-  "Watch templates table created",
-  "Schedule runs table created",
-  "Schedule assignments table created",
-  "Charter pauses table created",
-  "Leave records table created",
-  "Audit logs table created",
-  "RLS policies enabled",
-  "Stripe checkout connected",
-  "Stripe webhook connected",
-  "PDF export connected",
-  "OCR / crew extraction connected",
-  "Schedule generation Edge Function connected",
-];
 
 export default function Settings() {
+  const { user, profile, subscription, vessel, signOut, refreshAppState } = useAuth();
+  const navigate = useNavigate();
+
+  const [fullName, setFullName] = useState("");
+  const [vesselName, setVesselName] = useState("");
+  const [vesselLength, setVesselLength] = useState("");
+  const [timezone, setTimezone] = useState("");
+  const [savingAccount, setSavingAccount] = useState(false);
+  const [savingVessel, setSavingVessel] = useState(false);
+
+  useEffect(() => {
+    setFullName(profile?.full_name ?? "");
+    setVesselName(vessel?.name ?? "");
+    setVesselLength(vessel?.length_meters ? String(vessel.length_meters) : "");
+    setTimezone(vessel?.timezone ?? "");
+  }, [profile, vessel]);
+
+  const planType = (subscription?.plan_type ?? vessel?.plan_type) as PlanType | null | undefined;
+
+  async function saveAccount() {
+    if (!user) return;
+    setSavingAccount(true);
+    try {
+      await updateProfile(user.id, { full_name: fullName });
+      await refreshAppState();
+      toast.success("Account saved.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save account.");
+    } finally {
+      setSavingAccount(false);
+    }
+  }
+
+  async function saveVessel() {
+    if (!vessel) {
+      toast.error("No vessel yet — complete onboarding first.");
+      return;
+    }
+    setSavingVessel(true);
+    try {
+      await updateVessel(vessel.id, {
+        name: vesselName,
+        length_meters: vesselLength ? Number(vesselLength) : null,
+        timezone: timezone || "UTC",
+      });
+      await refreshAppState();
+      toast.success("Vessel saved.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save vessel.");
+    } finally {
+      setSavingVessel(false);
+    }
+  }
+
   return (
     <AppShell>
       <PageHeader
         eyebrow="Settings"
         title="Account, vessel & billing"
-        description="Manage account, vessel profile, plan, and role-based access. Real backend integration pending."
+        description="Manage account, vessel profile, plan, and role-based access."
       />
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="panel p-5">
@@ -45,19 +83,27 @@ export default function Settings() {
           <div className="mt-4 grid gap-3">
             <div className="space-y-2">
               <Label>Full name</Label>
-              <Input defaultValue="Captain James Carter" />
+              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input defaultValue="captain@meridian.yacht" type="email" />
+              <Input value={user?.email ?? ""} type="email" disabled />
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <Input defaultValue="Captain/Admin" />
+              <Input value={profile?.role ?? "captain"} disabled />
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => toast("Account saved (mock).")}>Save account</Button>
-              <Button variant="outline" onClick={() => signOut()}>
+              <Button onClick={saveAccount} disabled={savingAccount}>
+                {savingAccount ? "Saving…" : "Save account"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  await signOut();
+                  navigate("/login");
+                }}
+              >
                 Sign out
               </Button>
             </div>
@@ -71,22 +117,18 @@ export default function Settings() {
           <div className="mt-4 grid gap-3">
             <div className="space-y-2">
               <Label>Vessel name</Label>
-              <Input defaultValue={MOCK_VESSEL.name} />
+              <Input value={vesselName} onChange={(e) => setVesselName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Vessel length</Label>
-              <Input defaultValue={`${MOCK_VESSEL.lengthMeters}m`} />
-            </div>
-            <div className="space-y-2">
-              <Label>Operation type</Label>
-              <Input defaultValue="Private/Charter" />
+              <Label>Vessel length (m)</Label>
+              <Input value={vesselLength} onChange={(e) => setVesselLength(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Timezone</Label>
-              <Input defaultValue={MOCK_VESSEL.timezone} />
+              <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} />
             </div>
-            <Button className="self-start" onClick={() => toast("Vessel saved (mock).")}>
-              Save vessel
+            <Button className="self-start" onClick={saveVessel} disabled={savingVessel}>
+              {savingVessel ? "Saving…" : "Save vessel"}
             </Button>
           </div>
         </div>
@@ -96,19 +138,17 @@ export default function Settings() {
             Plan &amp; billing
           </div>
           <div className="mt-3 text-sm">
-            Current plan: <span className="font-medium">Triple Watch</span> · Subscription status:
-            Active
+            Current plan:{" "}
+            <span className="font-medium">{planType ? PLAN_LABEL[planType] : "None"}</span> ·
+            Subscription status: {subscription?.status ?? "inactive"}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            Billing email: captain@meridian.yacht · {"{{STRIPE_CUSTOMER_ID}}"}
+            Billing email: {user?.email ?? "—"}
           </div>
           <Button
             variant="outline"
             className="mt-4"
-            onClick={async () => {
-              await openStripeCustomerPortal(); // TODO: real Stripe portal
-              toast("Stripe customer portal placeholder.");
-            }}
+            onClick={() => toast("Stripe customer portal is not configured yet.")}
           >
             Manage billing
           </Button>
@@ -129,42 +169,28 @@ export default function Settings() {
               >
                 <span>{r}</span>
                 <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Placeholder
+                  {r === "Captain/Admin" ? "You" : "Invite later"}
                 </span>
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="lg:col-span-2 panel p-5">
-          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-            Security note
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Crew and vessel data will be protected through authenticated access and vessel-level
-            permissions once Supabase is connected.
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            TODO: crew/member invitations and fine-grained permissions.
           </p>
         </div>
 
         <div className="lg:col-span-2 panel p-5">
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-            Backend Setup Checklist
+            Security
           </div>
-          <div className="mt-4 grid gap-2 md:grid-cols-2">
-            {BACKEND_CHECKLIST.map((item) => (
-              <label
-                key={item}
-                className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground"
-              >
-                <input type="checkbox" className="accent-white" />
-                <span>{item}</span>
-              </label>
-            ))}
-          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            All vessel and crew data is protected by Supabase Row Level Security — access is scoped
+            to the vessel owner and members.
+          </p>
         </div>
 
         <div className="lg:col-span-2">
-          <DevMockStatePanel />
+          <DevSubscriptionPanel />
         </div>
       </div>
     </AppShell>
