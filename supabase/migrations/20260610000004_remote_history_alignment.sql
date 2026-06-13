@@ -1,0 +1,8 @@
+-- This migration timestamp exists in the remote Supabase migration history for
+-- project diepraznybnjlwryibod.
+--
+-- The original SQL was already applied remotely, but the migration file was
+-- missing from this local working folder. This no-op file restores local/remote
+-- migration history alignment so later additive migrations can be pushed.
+--
+-- Do not remove this file without intentionally repairing migration history.

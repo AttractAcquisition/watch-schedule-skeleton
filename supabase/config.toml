@@ -1,0 +1,61 @@
+# Watch Schedule — Supabase CLI config.
+# project_id is the local stack name; link the remote project with:
+#   supabase link --project-ref diepraznybnjlwryibod
+project_id = "watch-schedule"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+# Set to your deployed app URL in production.
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# For easy local/dev testing the account is usable immediately.
+# Enable email confirmations before production.
+enable_confirmations = false
+
+[functions.generate-schedule]
+verify_jwt = true
+
+[functions.regenerate-schedule]
+verify_jwt = true
+
+[functions.charter-mode]
+verify_jwt = true
+
+[functions.export-schedule]
+verify_jwt = true
+
+[functions.calculate-fairness]
+verify_jwt = true
+
+[functions.leave-impact]
+verify_jwt = true
+
+[functions.create-checkout-session]
+verify_jwt = true
+
+[functions.create-customer-portal-session]
+verify_jwt = true
+
+# verify_jwt = false: requests come from Stripe, not authenticated users.
+[functions.stripe-webhook]
+verify_jwt = false
